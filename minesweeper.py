@@ -114,7 +114,7 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be safe.
         """
-        if len(self.cells) == 0:
+        if self.count == 0:
             return set(self.cells)
         else:
             return set()
@@ -135,7 +135,6 @@ class Sentence():
         """
         if cell in self.cells:
             self.cells.remove(cell)
-
 
 class MinesweeperAI():
     """
@@ -191,7 +190,6 @@ class MinesweeperAI():
             5) add any new sentences to the AI's knowledge base
                if they can be inferred from existing knowledge
         """
-
         #1
         self.moves_made.add(cell)
 
@@ -199,41 +197,25 @@ class MinesweeperAI():
         self.mark_safe(cell)
 
         #3
-        nearby_cells = set()
-
-        top_i = max(0, cell[0] - 1)
-        bottom_i = min(self.height, cell[0] + 2)
-
-        left_j = max(0, cell[1] - 1)
-        right_j = min(self.width, cell[1] + 2)
-
-        for i in range(top_i, bottom_i):
-            for j in range(left_j, right_j):
-                if (i, j) != cell:
-                    nearby_cells.add((i, j))
-
-        self.knowledge.append(Sentence(nearby_cells, count))
-
+        
+        self.add_new_sentence(cell, count)
 
         #4
         for sentence in self.knowledge:
-            for cell in sentence.known_safes():
-                self.mark_safe(cell)
-            for cell in sentence.known_mines():
-                self.mark_mine(cell)
+            if len(sentence.known_safes()) != 0: 
+                for cell in sentence.known_safes():
+                    self.mark_safe(cell)
+            if len(sentence.known_mines()) != 0:
+                for cell in sentence.known_mines():
+                    self.mark_mine(cell)
+
+        self.remove_empty_sentences()
 
         #5
-        for sentence1 in self.knowledge:
-            for sentence2 in self.knowledge:
-                if sentence1 == sentence2:
-                    continue
-                if sentence2.cells.issubset(sentence1.cells):
-                    new_cells = sentence1.cells - sentence2.cells
-                    new_count = sentence1.count - sentence2.count
-                    inferred = Sentence(new_cells, new_count)
-                    self.knowledge.append(inferred)
+        if len(self.knowledge) > 1:
+            self.new_inference()
 
-
+        self.print_data()
 
 
     def make_safe_move(self):
@@ -249,6 +231,8 @@ class MinesweeperAI():
             if cell not in self.moves_made:
                 return cell
 
+        return None
+
     def make_random_move(self):
         """
         Returns a move to make on the Minesweeper board.
@@ -256,11 +240,67 @@ class MinesweeperAI():
             1) have not already been chosen, and
             2) are not known to be mines
         """
-        for i in range(0, self.height):
-            for j in range(0, self.width):
-                cell = (i, j)
-                if cell not in self.moves_made and cell not in self.mines:
-                    return cell
-        
+        while len(self.moves_made) + len(self.mines) != 64:
+            i = random.randint(0, self.height-1)
+            j = random.randint(0, self.width-1)
+            cell = (i, j)
 
+            if cell not in self.moves_made and cell not in self.mines:
+                return (i, j)
+
+        return None
+
+    def remove_empty_sentences(self):
+
+        remove = []
+        for sentence in self.knowledge:
+            if len(sentence.cells) == 0:
+                remove.append(sentence)
+
+        self.knowledge = [sentence for sentence in self.knowledge if sentence not in remove]
+
+    def add_new_sentence(self, cell, count):
+
+        nearby_cells = set()
+
+        top_i = max(0, cell[0] - 1)
+        bottom_i = min(self.height, cell[0] + 2)
+
+        left_j = max(0, cell[1] - 1)
+        right_j = min(self.width, cell[1] + 2)
+
+        for i in range(top_i, bottom_i):
+            for j in range(left_j, right_j):
+                if (i, j) != cell and (i, j) not in self.safes:
+                    nearby_cells.add((i, j))
+
+        sentence = Sentence(nearby_cells, count)
+
+        self.knowledge.append(sentence)
+
+    def new_inference(self):
+        inferences = []
+        reapeted = []
+
+        for sentence1 in self.knowledge:
+            for sentence2 in self.knowledge:
+                if sentence1 != sentence2:
+                    if sentence2.cells.issubset(sentence1.cells):
+                        new_cells = sentence1.cells.difference(sentence2.cells) 
+                        new_count = sentence1.count - sentence2.count
+                        inferred = Sentence(new_cells, new_count)
+                        inferences.append(inferred)
+                        reapeted.append(sentence1)
+                        reapeted.append(sentence2)
+
+        self.knowledge = [sentence for sentence in self.knowledge if sentence not in reapeted]
+        self.knowledge = self.knowledge + inferences
+
+    def print_data(self):
+
+        print(f"Mines: {self.mines}")
+        print(f"Safes: {self.safes}")
+        print("knowledge: ")
+        for sentence in self.knowledge:
+            print(f"\t{sentence.cells} = {sentence.count}")
 
