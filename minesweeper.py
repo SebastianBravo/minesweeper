@@ -105,6 +105,7 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be mines.
         """
+
         if len(self.cells) == self.count:
             return set(self.cells)
         else:
@@ -114,6 +115,7 @@ class Sentence():
         """
         Returns the set of all cells in self.cells known to be safe.
         """
+
         if self.count == 0:
             return set(self.cells)
         else:
@@ -124,6 +126,7 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be a mine.
         """
+
         if cell in self.cells:
             self.cells.remove(cell)
             self.count -= 1
@@ -133,8 +136,10 @@ class Sentence():
         Updates internal knowledge representation given the fact that
         a cell is known to be safe.
         """
+
         if cell in self.cells:
             self.cells.remove(cell)
+
 
 class MinesweeperAI():
     """
@@ -196,27 +201,21 @@ class MinesweeperAI():
         #2
         self.mark_safe(cell)
 
-        #3
-        
+        #3        
         self.add_new_sentence(cell, count)
 
         #4
-        for sentence in self.knowledge:
-            if len(sentence.known_safes()) != 0: 
-                for cell in sentence.known_safes():
-                    self.mark_safe(cell)
-            if len(sentence.known_mines()) != 0:
-                for cell in sentence.known_mines():
-                    self.mark_mine(cell)
+        self.update_knowledge()
 
-        self.remove_empty_sentences()
+        self.remove_empty_sentences_and_duplicates()
 
         #5
         if len(self.knowledge) > 1:
             self.new_inference()
+            self.update_knowledge()
+            self.remove_empty_sentences_and_duplicates()
 
         self.print_data()
-
 
     def make_safe_move(self):
         """
@@ -250,14 +249,31 @@ class MinesweeperAI():
 
         return None
 
-    def remove_empty_sentences(self):
+    def update_knowledge(self):
+
+        for sentence in self.knowledge: 
+            for cell in sentence.known_safes():
+                self.mark_safe(cell)
+            for cell in sentence.known_mines():
+                self.mark_mine(cell)
+            for cell in self.mines:
+                self.mark_mine(cell)
+            for cell in self.safes:
+                self.mark_safe(cell)
+
+    def remove_empty_sentences_and_duplicates(self):
 
         remove = []
+        no_duplicates = []
         for sentence in self.knowledge:
             if len(sentence.cells) == 0:
                 remove.append(sentence)
 
         self.knowledge = [sentence for sentence in self.knowledge if sentence not in remove]
+
+        [no_duplicates.append(sentence) for sentence in self.knowledge if sentence not in no_duplicates]
+
+        self.knowledge = no_duplicates.copy()
 
     def add_new_sentence(self, cell, count):
 
@@ -271,7 +287,7 @@ class MinesweeperAI():
 
         for i in range(top_i, bottom_i):
             for j in range(left_j, right_j):
-                if (i, j) != cell and (i, j) not in self.safes:
+                if (i, j) != cell:
                     nearby_cells.add((i, j))
 
         sentence = Sentence(nearby_cells, count)
@@ -280,7 +296,6 @@ class MinesweeperAI():
 
     def new_inference(self):
         inferences = []
-        reapeted = []
 
         for sentence1 in self.knowledge:
             for sentence2 in self.knowledge:
@@ -289,11 +304,9 @@ class MinesweeperAI():
                         new_cells = sentence1.cells.difference(sentence2.cells) 
                         new_count = sentence1.count - sentence2.count
                         inferred = Sentence(new_cells, new_count)
-                        inferences.append(inferred)
-                        reapeted.append(sentence1)
-                        reapeted.append(sentence2)
+                        if inferred not in self.knowledge:
+                            inferences.append(inferred)
 
-        self.knowledge = [sentence for sentence in self.knowledge if sentence not in reapeted]
         self.knowledge = self.knowledge + inferences
 
     def print_data(self):
@@ -303,4 +316,3 @@ class MinesweeperAI():
         print("knowledge: ")
         for sentence in self.knowledge:
             print(f"\t{sentence.cells} = {sentence.count}")
-
