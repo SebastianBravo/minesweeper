@@ -217,7 +217,9 @@ class MinesweeperAI():
             self.update_knowledge()
             self.remove_empty_sentences_and_duplicates()
 
-        self.print_data()
+        # Print Knowledge data (OPTIONAL)
+         
+        # self.print_data()
 
     def make_safe_move(self):
         """
