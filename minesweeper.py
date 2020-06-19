@@ -195,21 +195,23 @@ class MinesweeperAI():
             5) add any new sentences to the AI's knowledge base
                if they can be inferred from existing knowledge
         """
-        #1
+        # Mark the cell as a move that has been made
         self.moves_made.add(cell)
 
-        #2
+        # Mark the cell as safe
         self.mark_safe(cell)
 
-        #3        
+        # Add a new sentence to the AI's knowledge base
+        # based on the value of `cell` and `count`        
         self.add_new_sentence(cell, count)
 
-        #4
+        # Mark any additional cells as safe or as mines
+        # if it can be concluded based on the AI's knowledge base
         self.update_knowledge()
-
         self.remove_empty_sentences_and_duplicates()
 
-        #5
+        # Add any new sentences to the AI's knowledge base
+        # if they can be inferred from existing knowledge
         if len(self.knowledge) > 1:
             self.new_inference()
             self.update_knowledge()
@@ -249,8 +251,37 @@ class MinesweeperAI():
 
         return None
 
-    def update_knowledge(self):
+    def add_new_sentence(self, cell, count):
+        """
+        add a new sentence to the AI's knowledge base
+        based on the value of `cell` and `count`
+        """
+        # Initilize an empty set for nearby cells
+        nearby_cells = set()
 
+        # Variables to keep the upper and lower limits of nearby cells
+        top_i = max(0, cell[0] - 1)
+        bottom_i = min(self.height, cell[0] + 2)
+
+        # Variables to keep the left and right limits of nearby cells
+        left_j = max(0, cell[1] - 1)
+        right_j = min(self.width, cell[1] + 2)
+
+        # Add all the nearby cells to the set
+        for i in range(top_i, bottom_i):
+            for j in range(left_j, right_j):
+                if (i, j) != cell:
+                    nearby_cells.add((i, j))
+
+        # Create a new sentence and update the knowledge base
+        sentence = Sentence(nearby_cells, count)
+        self.knowledge.append(sentence)
+
+    def update_knowledge(self):
+        """
+        Mark any cells as safe or as mines if it can 
+        be concluded based on the AI's knowledge base
+        """
         for sentence in self.knowledge: 
             for cell in sentence.known_safes():
                 self.mark_safe(cell)
@@ -262,41 +293,41 @@ class MinesweeperAI():
                 self.mark_safe(cell)
 
     def remove_empty_sentences_and_duplicates(self):
+        """
+        Remove each empety sentece or duplicates in 
+        the knoledge base
+        """
 
+        # Initialize empty lists to keep the no duplicates and empty sentences
         remove = []
         no_duplicates = []
+
+        # Add all the empty sentences in the knowledge base to the remove list
         for sentence in self.knowledge:
             if len(sentence.cells) == 0:
                 remove.append(sentence)
 
+        # Update the knowledge base without any empty sentence
         self.knowledge = [sentence for sentence in self.knowledge if sentence not in remove]
 
+        # Add all the sentences in the knowledge base without any duplicate
         [no_duplicates.append(sentence) for sentence in self.knowledge if sentence not in no_duplicates]
 
+        # Update the knowledge base without any duplicate
         self.knowledge = no_duplicates.copy()
 
-    def add_new_sentence(self, cell, count):
-
-        nearby_cells = set()
-
-        top_i = max(0, cell[0] - 1)
-        bottom_i = min(self.height, cell[0] + 2)
-
-        left_j = max(0, cell[1] - 1)
-        right_j = min(self.width, cell[1] + 2)
-
-        for i in range(top_i, bottom_i):
-            for j in range(left_j, right_j):
-                if (i, j) != cell:
-                    nearby_cells.add((i, j))
-
-        sentence = Sentence(nearby_cells, count)
-
-        self.knowledge.append(sentence)
-
     def new_inference(self):
+        """
+        Add any new sentences to the AI's knowledge base
+        if they can be inferred from existing knowledge
+        """
+        
+        # Initialize an empty list to keep all the new inferences
         inferences = []
 
+        # Loop through all the sentences in the knowledge base,
+        # if any sentence is a subset of the another sentence,
+        # it makes a new inference
         for sentence1 in self.knowledge:
             for sentence2 in self.knowledge:
                 if sentence1 != sentence2:
@@ -307,12 +338,15 @@ class MinesweeperAI():
                         if inferred not in self.knowledge:
                             inferences.append(inferred)
 
+        # Add all the new inferences to the knowledge base
         self.knowledge = self.knowledge + inferences
 
     def print_data(self):
-
-        print(f"Mines: {self.mines}")
-        print(f"Safes: {self.safes}")
+        """
+        Print the knowledge base and the cells known to be mines
+        """
+        print(f"Mines:\n\t{self.mines}")
+        
         print("knowledge: ")
         for sentence in self.knowledge:
             print(f"\t{sentence.cells} = {sentence.count}")
